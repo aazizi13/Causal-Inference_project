@@ -1,0 +1,555 @@
+---
+title: "Final_Project"
+author: "Connor McCormick, In Tae Kim, Ahmad Azizi"
+date: "04/19/2022"
+output:
+  pdf_document:
+    number_sections: yes
+    fig_caption: yes
+urlcolor: blue
+linkcolor: 'black'
+header-includes: 
+- \usepackage{graphicx}
+- \usepackage{float}
+---
+```{r, warning=FALSE, message=FALSE, echo=FALSE, warning=FALSE}
+options(knitr.duplicate.label = "allow", warning= FALSE, message = FALSE)
+
+library(data.table)
+
+library(sandwich)
+library(lmtest)
+
+library(stargazer)
+library(ggplot2)
+library(magrittr)
+library(gridExtra)
+
+library(dplyr)
+
+library(reshape2)
+library(likert)
+library(stargazer)
+library(ggThemeAssist)
+library(kableExtra)
+library(purrr)
+
+
+
+library(pwr)
+
+
+library(knitr)
+inline_reference <- "r inline_reference"
+opts_chunk$set(fig.path='figure/graphics-', 
+                 cache.path='cache/graphics-', 
+                 fig.align='center',
+                 fig.pos='H'
+                )
+```
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#loading data
+data <- read.csv("./Data/241_data(275).csv")
+data <- data.table(data)
+
+head_data <- head(data)
+```
+\tableofcontents
+\newpage
+
+# Abstract
+Does knowing calories of a meal impact choice of food? Obesity has been a major issue in the US for decades, and currently, there are not many effective measures that attempt to limit food intake and/or promote healthy choices. This issue took the spotlight once more during the COVID-19 pandemic, where people who are obese are considered at a high risk of getting severely ill. Aside from the pandemic, obesity can lead to a variety of health complications that are often fatal. Although there have been many studies where food labeling and its correlation with obesity have been investigated, we decided to put a specific angle of this idea under investigation by testing the effectiveness of calorie labels directly next to food before consumption. In this study, we provided our subjects with an experimental survey to test if the presence of this calorie information has an effect on the rate of consumption of unhealthy foods. Both treatment and control groups were shown pictures of food choices, however the treatment group had the additional calorie information displayed clearly next to the food item ready for hypothetical consumption. Our results showed that the treatment group on average was less likely to consume the displayed food than the control group. This study shows that food labeling with calorie content has a causal effect on the choice to consume a given food item. We recommend manufacturers to clearly label their food calories to customers. 
+
+# Background
+
+### Research Question
+The specific research question that we are proposing is: “Does the presence of calorie information along with images of food influence propensity to consume?”. As mentioned before, there have been a handful of [studies](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4209007/#R43) [[1](# References)] done on the effects of calorie labeling on food orders and consumption, particularly on the effect of calorie labeling timed at the “point of purchase”. The idea here is that many restaurants, specifically, fast food restaurants have calorie information available in pamphlets or on the restaurant’s website which is a problem since many people are unaware of these information sources. Additionally, of those who are aware, even fewer actively seek out this information. In our literature review, we have found a few similar studies [[2-5](# References)] in the sense that they have simulated food consumption with a treatment that provides calorie information along with the food choice compared to the control group that does not have said calorie information. The justification for our experiment here is based on generalizability since the other similar studies either test a specific demographic that may not be as generalizable(one study only tested in Victoria, Australia), test with a slightly different methodology, or both. In addition, reproducibility is always helpful in strengthening claims for a certain result. With this experiment, we aim to supplement the body of research done on this topic and ultimately increase the amount of evidence that calorie labeling on food can be an effective method to increase consciousness of nutrition choices.
+
+### Hypothesis
+As previously mentioned, we hope to support the claim that food labeling impacts a consumer’s choice when considering food consumption, thus we are hypothesizing that the presence of calorie labels next to the food item proposed for consumption will lower the average propensity to consume measure. In particular, our null hypothesis is that the presence of calorie information along with images of food has no effect on the propensity to consume a given food item. The alternative hypothesis is that the presence of calorie information does in fact have an effect on the propensity to consume a given food item. Our reasoning behind this hypothesis is that the set of food items that we have chosen to display are a set of deceivingly high calorie foods, so we expect that when presented with the actual high number of calories contained in the food, the subject’s propensity to consume may decrease. For example, a can of coke contains 140 calories which is pretty high for a single 12 fluid ounce beverage, so we expect that a person presented with this information alongside the choice will be less likely to consume. This hypothesis is based on the theory that a factor contributing to poor nutrition and obesity is a lack of information.
+
+# Methods
+
+### Pre-Experiment Survey
+Our experiment begins with a survey for each participant which collects a set of relevant information. The specific questions that we ask in the survey are as follows:
+
+1. What is your age?
+2. What is your gender?
+    - Male
+    - Female
+    - Non-binary / third gender
+    - Prefer not to say
+3. Are you vegan or vegetarian?
+    - Yes
+    - No
+4. How active are you on average?
+    - Active
+    - Somewhat active
+    - Non-active
+5. How often do you eat out?
+    - 1-2 days a week
+    - 3-5 days a week
+    - 6-7 days a week
+6. Do you actively look at calories when buying food?
+    - Always
+    - Sometimes
+    - Never
+
+With this information, in addition to measuring covariates, we also formed blocks based on the response to question 6. The idea here is that those who already look at calories when buying food will hypothetically have a different response to the treatment than the other two groups who look at calories less often
+
+### Potential Outcomes
+
+In our experiment, we will be comparing the potential outcomes of the treatment group and the control group across all three blocks. Specifically, the potential outcomes that we will be measuring are the averages of the consumption likelihood responses for each food displayed for every subject. To be specific, every subject will view 8 images where they will be prompted to answer how likely they are to consume the displayed food item. For every subject, we will then have 8 responses on a Likert scale that indicate how likely that subject was to consume each individual food item. We will then take the average of all 8 responses for every subject which will become another column in our final data frame, thus giving us the potential outcome for every subject that we will compare in our analysis. The image below describes this process with the ROXO framework to add more clarity. 
+
+```{r ROXO Diagram, echo=FALSE, fig.align="center", fig.cap="ROXO Diagram", out.width = '100%'}
+knitr::include_graphics("./Images/ROXO_diagram.png")
+```
+
+### Randomization Process
+
+Given the design outlined in the previous section, we utilized the Qualtrics survey platform to conduct the randomization process. The survey begins with the first page asking the subject for various demographic information and other covariates we were interested in. The covariates we decided to capture were age, gender, diet, level of activity or exercise, and frequency of eating out. Due to the nature of our survey, which focused primarily on measuring the treatment effect for images of food with deceptively high calorie count, many of our included foods included meat and forced us to make a decision regarding handling of those that answered vegan or vegetarian in the first page of the survey. After conducting our pilot study and observing a relatively low proportion of individuals with vegan and vegetarian diets, we elected to simply exclude them from our study moving forward. However, after observing a higher proportion of vegans and vegetarians in our actual experiment, this exclusion criteria remains a significant limitation that will be discussed in greater detail in a later section. 
+
+In addition to measuring covariates, we also decided to block based on the question “Do you actively look at calories when buying food” pre-treatment assignment.  
+
+Based on their answer to this question, with the options being “Always”, “Sometimes” and “Never”, the subject was placed into a block and randomly assigned to treatment or control for the given block. This blocking mechanism was selected as there was strong evidence to suggest that an individual’s defined importance in looking at calories would affect their propensity to consume a food when shown caloric information. By blocking in this manner, we laid the groundwork for measuring the difference in treatment effects within each one of these blocks. 
+
+### Treatment
+
+The treatment in our study was the inclusion of caloric information alongside the image of food. Excluding this treatment, all things were held identical to the control. After the random assignment occurred following the first page collecting information about the subject, the treatment and control displayed a page asking “How likely are you to consume the following foods?” for eight foods (cheeseburger, french fries, Coca-Cola, cheese steak, California burrito, clam chowder, chocolate chip cookie, and potato chips) with an image of the food provided. Five options are given to the subject below the image in the form of radio buttons, listed as “Extremely likely”, “Somewhat likely”, “Neither likely nor unlikely”, “Somewhat unlikely”, and “Extremely unlikely” displayed from top to bottom. The only difference that exists in treatment is the additional inclusion of an approximate number of calories estimated for the displayed food, which is shown directly to the right of each image. 
+
+```{r Treatment Image, echo=FALSE, fig.align="center", fig.cap="Treatment Survey", out.width = '80%'}
+knitr::include_graphics("./Images/image1.png")
+```
+
+### Data Collection
+
+In order to validate the efficacy of our data collection methodology, we began by employing a smaller-scale pilot study among friends and family to ensure that we were obtaining the relevant data for the study to be successful. After receiving 32 responses in the pilot study and finding no indications that our data collection method would run into complications, we moved on to preparing for our major study.
+
+For the purposes of our major study we used Survey Swap, a panel provider, to distribute our Qualtrics survey and provide us with the necessary data to execute our research. The demographics for our data collection were for the most part unrestricted, with the only applied requirement for survey respondents being that they spoke English. While we made the initial investment for 350 survey respondents through Survey Swap, due to time limitations we were only able to receive 270 respondents. One important note to make is that while the pilot study did not show any indication of possible issues, the sampled respondents were likely not a perfect representation of our sample for the major study due to our reliance on friends and family for our pilot data. Issues regarding representation did occur post-experiment, which will be discussed later in analysis concerning covariate balance checks. 
+
+### Power Analysis
+
+Based on our prior literature review of existing research in this area, we estimated that if we were able to find an effect size for our treatment, it would likely be small. Based on the conventional value for Cohen’s d for a small effect size, we set our effect size parameter to 0.2 and computed the necessary sample size for a desired power of 0.8. This power is typically the convention for similar research in this field. The subsequent calculation revealed that the required sample size for the specified parameters would be 394 subjects or observations in both control and treatment. Unfortunately this was one clear limitation in our study, as we fell short of this number with a final sample size of 275 subjects. While this will be further discussed in the concluding limitations section of this paper, we felt it was important to note that there may have been a significant amount of noise in our data due to the relatively small sample size.
+
+
+```{r, echo=FALSE}
+r_power <- pwr.t.test(n = NULL, d = 0.2, sig.level = 0.05,
+                      power = 0.8,
+                      type = "two.sample",
+                      alternative = "two.sided")
+r_power
+```
+```{r, echo=FALSE, out.width='80%'}
+plot(r_power)
+```
+
+# Analysis
+
+### Data Exploration
+
+After completion of the survey as described in the Methods section, the "look_calories" was used to block the subjects before randomly assigning them to treatment or control groups. We had a final count of 275 observations with 15 columns as you can see below in ***Table 1***. For our exploratory analysis, we removed all observations with NAs and data points for subjects who answered "Yes" for being a vegetarian or vegan. This data cleaning process was conducted after concluding that as the food images had non-vegetarian and non-vegan ingredients, leaving in vegetarian and vegan subjects would have likely skewed our results with regards to propensity to consume the foods listed. After this cleaning process, we were left with 214 data points. 
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#loading data
+data <- read.csv("./Data/241_data(275).csv")
+data <- data.table(data)
+
+head_data <- head(data)
+
+#head(data)
+# kable(head_data, "latex", booktabs = T) %>%
+# kable_styling(latex_options = c("striped", "scale_down"))
+#  
+# options(knitr.table.format = "latex")
+# head(data) %>%
+#   kbl(caption = "Shows the first few datapoints in the dataset") %>%
+#   kable_classic(html_font = "Cambria", full_width = F)  %>%
+#   kable_styling(latex_options = c("striped", "scale_down"))
+#   #kable_styling(font_size = 5)
+
+```
+
+```{r,echo=FALSE, fig.pos="H"}
+kable(head_data, format="latex", align = "l",
+      caption = "Shows the first few datapoints in the dataset") %>%
+  kable_styling(full_width = F, latex_options = c("striped", "scale_down", "HOLD_position")) %>%
+  row_spec(0, align = "l")
+```
+
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, echo=FALSE}
+#getting rid of na's 
+#getting rid of participants who were vegetarian or vegan
+data <- data[, na.omit(data)][veg != "Yes"][active != ""][veg != ""]
+
+#subtracting 5 from food columns
+cols <- c("cheese_burger", "french_fries", "coke", "cheese_steak", "california_burrito", "clam_chowder", "choc_chip_cookie", "potato_chips")
+data <- data[, (cols) := lapply(.SD, function(x) (x-5)), .SDcols = cols]
+
+#For each food type, changing values 5 and 4 to 1 and 2, respectively. 
+#doing this to make reading the data more intuitive 
+
+#sapply(data, class)
+data$cheese_burger[data$cheese_burger == 5] <- 10
+data$cheese_burger[data$cheese_burger == 4] <- 20
+data$cheese_burger[data$cheese_burger == 1] <- 5
+data$cheese_burger[data$cheese_burger == 2] <- 4
+data$cheese_burger[data$cheese_burger == 10] <- 1
+data$cheese_burger[data$cheese_burger == 20] <- 2
+
+data$french_fries[data$french_fries == 5] <- 10
+data$french_fries[data$french_fries == 4] <- 20
+data$french_fries[data$french_fries == 1] <- 5
+data$french_fries[data$french_fries == 2] <- 4
+data$french_fries[data$french_fries == 10] <- 1
+data$french_fries[data$french_fries == 20] <- 2
+
+
+data$coke[data$coke == 5] <- 10
+data$coke[data$coke == 4] <- 20
+data$coke[data$coke == 1] <- 5
+data$coke[data$coke == 2] <- 4
+data$coke[data$coke == 10] <- 1
+data$coke[data$coke == 20] <- 2
+
+data$cheese_steak[data$cheese_steak == 5] <- 10
+data$cheese_steak[data$cheese_steak == 4] <- 20
+data$cheese_steak[data$cheese_steak == 1] <- 5
+data$cheese_steak[data$cheese_steak == 2] <- 4
+data$cheese_steak[data$cheese_steak == 10] <- 1
+data$cheese_steak[data$cheese_steak == 20] <- 2
+
+
+data$california_burrito[data$california_burrito == 5] <- 10
+data$california_burrito[data$california_burrito == 4] <- 20
+data$california_burrito[data$california_burrito == 1] <- 5
+data$california_burrito[data$california_burrito == 2] <- 4
+data$california_burrito[data$california_burrito == 10] <- 1
+data$california_burrito[data$california_burrito == 20] <- 2
+
+
+data$clam_chowder[data$clam_chowder == 5] <- 10
+data$clam_chowder[data$clam_chowder == 4] <- 20
+data$clam_chowder[data$clam_chowder == 1] <- 5
+data$clam_chowder[data$clam_chowder == 2] <- 4
+data$clam_chowder[data$clam_chowder == 10] <- 1
+data$clam_chowder[data$clam_chowder == 20] <- 2
+
+
+data$choc_chip_cookie[data$choc_chip_cookie == 5] <- 10
+data$choc_chip_cookie[data$choc_chip_cookie == 4] <- 20
+data$choc_chip_cookie[data$choc_chip_cookie == 1] <- 5
+data$choc_chip_cookie[data$choc_chip_cookie == 2] <- 4
+data$choc_chip_cookie[data$choc_chip_cookie == 10] <- 1
+data$choc_chip_cookie[data$choc_chip_cookie == 20] <- 2
+
+
+data$potato_chips[data$potato_chips == 5] <- 10
+data$potato_chips[data$potato_chips == 4] <- 20
+data$potato_chips[data$potato_chips == 1] <- 5
+data$potato_chips[data$potato_chips == 2] <- 4
+data$potato_chips[data$potato_chips == 10] <- 1
+data$potato_chips[data$potato_chips == 20] <- 2
+
+#copying data. 
+copy_data <- data.table(data)
+#head(copy_data)
+```
+
+Following data cleanup, we then took the average of all eight "likelihood to consume" responses for every subject and added it as an additional column in our final data frame, thus giving us the potential outcome for each subject that we sought to compare in our analysis. We also wanted to visualize treatment and control responses on a Likert scale to get a better understanding of general likelihood to consume a food. As shown in ***Figure 3***, it appears that in general most subjects are likely to consume all the foods. We do see that those who were in treatment generally were less likely to eat the food, except in the case of clam chowder. 
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+#calculating a total score then averaging out. 
+copy_data[, mean_score := (cheese_burger + french_fries + coke +
+            cheese_steak + california_burrito + clam_chowder + 
+             choc_chip_cookie + potato_chips)/8]
+```
+
+```{r, fig.width= 8, fig.height= 8,fig.pos="H", echo = FALSE, fig.cap="\\label{fig:figs}Shows control and Treatment groups response in a Likert Scale ", out.width = '60%', out.height = '60%'}
+copy_data$cheese_burger <- as.factor(copy_data$cheese_burger)
+copy_data$french_fries <- as.factor(copy_data$french_fries)
+copy_data$coke <- as.factor(copy_data$coke)
+copy_data$cheese_steak <- as.factor(copy_data$cheese_steak)
+copy_data$california_burrito <- as.factor(copy_data$california_burrito)
+copy_data$clam_chowder <- as.factor(copy_data$clam_chowder)
+copy_data$choc_chip_cookie <- as.factor(copy_data$choc_chip_cookie)
+copy_data$potato_chips <- as.factor(copy_data$potato_chips)
+
+#?levels
+
+#1 means Extremely unlikely
+#5 should Extremely likely
+
+
+factor_levels <- c("Extremely unLikely","somewhat unlikely",
+                   "neutral",
+                    "somewhat likely","Extremely likely"
+                   )
+
+levels(copy_data$cheese_burger) <- factor_levels
+levels(copy_data$french_fries) <- factor_levels
+levels(copy_data$coke) <- factor_levels
+levels(copy_data$cheese_steak) <- factor_levels
+levels(copy_data$california_burrito) <- factor_levels
+levels(copy_data$clam_chowder) <- factor_levels
+levels(copy_data$choc_chip_cookie) <- factor_levels
+levels(copy_data$potato_chips) <- factor_levels
+
+
+likert_plot = likert(copy_data[, c("cheese_burger",
+                                "french_fries","coke",
+                                "cheese_steak",
+                                "california_burrito",
+                                "clam_chowder",
+                                "choc_chip_cookie",
+                                "potato_chips"),
+                            drop=FALSE], grouping = data$Treatment)
+
+
+
+likert_plot <- plot(likert_plot, legend.position = "bottom")
+
+likert_plot + theme(axis.title = element_text(family = "serif",
+    size = 12), axis.text = element_text(family = "serif"),
+    axis.text.x = element_text(family = "serif"),
+    plot.title = element_text(family = "serif",
+        size = 14)) +labs(x = NULL)
+
+
+```
+
+Next, we wanted to visualize the differences in behavior between the control and treatment groups based on the the captured covariates. In ***Figure 4*** which has the box plots for the treatment and control groups, we immediately recognized that there was a covariate imbalance that existed. Firstly, we observed that for the gender covariate, those who responded "Prefer not to say" were all in the control group. Furthermore, for the "eat_out" covariate, all of those that selected "6-7 days" were part of the treatment group. In order to address the second area of imbalance, we elected to binarize the "eat_out" variable to reduce the overweighting of the "6-7 days" response in our later models. Thus for the purposes of the study, the three observations with this response were moved into the "3-5 days" bin.
+
+```{r, echo= FALSE}
+copy_data$Treatment <- as.factor(copy_data$Treatment)
+```
+
+
+
+```{r, warning=FALSE, message=FALSE,fig.pos="H", echo = FALSE, warn.conflicts = FALSE, fig.width=17, fig.height=8, fig.cap="\\label{fig:figs}shows boxplot of covariates with treatment and control. ", out.width = '80%'}
+
+#install.packages("ggThemeAssist")
+library(ggThemeAssist)
+
+par(mfrow=c(1,5), oma = c(1,1,1,1) + 0.1,  mar = c(3,3,1,1) + 0.1)
+
+p1  <- ggplot(aes(factor(gender), mean_score, fill = Treatment), data = copy_data) +
+  geom_boxplot(width = 0.5) + theme(plot.caption = element_text(size = 18,
+    colour = "gray24")) 
+
+
+
+p2 <- ggplot(aes(factor(active), mean_score, fill = Treatment), data = copy_data) +
+  geom_boxplot(width = 0.5) #+ geom_jitter(width=0.15)
+
+p3 <- ggplot(aes(factor(eat_out), mean_score, fill = Treatment), data = copy_data) +
+  geom_boxplot(width = 0.5) #+ geom_jitter(width=0.15)
+
+p4 <- ggplot(aes(factor(look_calories), mean_score, fill = Treatment), data = copy_data) +
+  geom_boxplot(width = 0.5) #+ geom_jitter(width=0.15)
+
+
+grid.arrange(p1, p2,p3,p4, nrow = 2, ncol = 2)
+
+```
+
+```{r, echo=FALSE}
+copy_data$eat_out[copy_data$eat_out == "6 - 7 days a week"] <- "3 - 5 days a week"
+```
+
+Next, we wanted to see what the average treatment effect was for treatment and control groups as shown in ***Table 2***. We ran a t-test and failed to reject the null hypothesis that there is a nonzero ATE with a p-value of 0.8382. 
+
+```{r, echo=FALSE}
+data_grouped_by_treatment <- copy_data[, .(treatment_mean_score =
+                                            mean(mean_score)), 
+                                            keyby = .(Treatment)]
+
+
+kable(data_grouped_by_treatment,
+             caption = "Average Treatment effect for Control and Treatments Groups",
+             digits = 2) %>%
+kable_styling(full_width = F, latex_options = c("HOLD_position"))
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+#Grouping by mean_score by Treatment
+d<- copy_data[, mean_score, keyby = .(Treatment)]
+
+d <- data.table(d)
+```
+
+
+```{r, echo=FALSE, fig.pos="H"}
+#running t test between mean_score of the two groups
+#d$Treatment <- as.numeric(d$Treatment)
+t_test <- d[, t.test(mean_score ~ Treatment )]
+t_test
+```
+
+\newpage
+### Model Building
+
+As we can see in the stargazer table, for our first model, we included only the outcome variable, which is the mean_score along with the treatment variable. The p-value is not significant and we cannot reject the null hypothesis that there is a difference between being in control and treatment groups. For our second model, we added the block variable(look_calories), and we can see the treatment variable is still not significant. However, this model reveals that those who never look at the calories have a significant positive relationship with the propensity of a subject to consume a food. 
+
+For our third model, we included all the covariates, and found that the treatment variable was still not significant, with little indication of any improvement in the model. However, the fact that those who never look at the calories has a significant positive value continued from the previous model.
+
+Following these initial models, we were interested in building an interaction term model between the treatment variable and the block covariate in model 4. Of note is that the treatment variable now had a significant negative effect, in other words indicating that those who were in treatment group are less likely to consume the foods than those in the control group. Furthermore, we observe that those who were in treatment group and never looked at caloric information were more likely to consume the foods. 
+
+For our final model, we included all the covariates including the interaction term. We can see that while the p-value shrinks for the treatment coefficient, the treatment variable remains relatively significant. Additionally,  the interaction term capturing those that are in the treatment group and  never look at the calories is still significant.
+
+
+```{r, echo=FALSE}
+#function to calculate robust standard error
+robust_se <- function(mod, type = 'HC3') { 
+  sqrt(diag(vcovHC(mod, type)))
+  }
+```
+
+```{r, warning=FALSE, message=FALSE, fig.height=5, fig.width=3,echo=FALSE, fig.pos="H"}
+
+mod1 <- copy_data[, lm(mean_score ~ Treatment)]
+
+mod2 <- copy_data[, lm(mean_score ~ Treatment + as.factor(look_calories))]
+
+mod3 <- copy_data[, lm(mean_score ~ Treatment + as.factor(look_calories)+ 
+                         as.factor(active) + age + as.factor(eat_out))]
+
+#with interaction term
+
+mod4 <- copy_data[, lm(mean_score ~ Treatment + as.factor(look_calories) + 
+                         Treatment * as.factor(look_calories))]
+
+mod5 <- copy_data[, lm(mean_score ~ Treatment + as.factor(look_calories)+ 
+                         as.factor(active) + age + as.factor(eat_out) +Treatment * as.factor(look_calories) )]
+
+
+stargazer(mod1, mod2, mod3, mod4, mod5,
+          type = "text",
+          se = list(
+    robust_se(mod1), robust_se(mod2),
+    robust_se(mod3),robust_se(mod4),robust_se(mod5)),
+    font.size = "small",
+    no.space = FALSE,
+    align = TRUE,
+    omit.stat = c("f", "ser"),
+    column.sep.width = "-40pt",
+     title = "\\textbf{Stargazer Table 1: Models with Robust Standard Errors}"
+    )
+
+
+    
+```
+
+Following the building of these models, we conducted a number of F-tests to evaluate the efficacy of our models in predicting the outcome variable measuring a subject's propensity to consume the listed foods (mean_score), and found that models 3 and 4 demonstrated significant improvement from the base model, while the additional inclusion of all covariates did not show significant improvement in predictive ability from previous models.
+
+
+```{r, echo=FALSE, fig.pos="H", out.height='50%'}
+anova(mod1, mod2, test = "F")
+anova(mod2, mod3, test = "F")
+anova(mod3, mod4, test = "F")
+anova(mod4, mod5, test = "F")
+```
+
+### Cluster Analysis
+
+As an alternative to the above analysis, we decided to additionally utilize a clustering approach to help us extract more information from our data. For the purposes of the clustering analysis, we created a copy of our data that transformed each observation into eight observations representing each of the eight responses that had been made by each individual.***Table 3*** shows the altered data set.
+
+```{r,echo=FALSE, fig.pos="H"}
+#copying data
+copy_data2 <- data
+
+#moving treatment to beginning of data table
+copy_data2 <- copy_data2 %>% relocate(Treatment, .before = age)
+
+#counting each answer to the experimental question as 1 data point. 
+df<- melt(copy_data2, id.vars=1:7)
+
+df <- data.table(df)
+
+head_df<- head(df)
+kable(head_df, format="latex", align = "l",
+      caption = "Shows the first few datapoints in the clustered dataset") %>%
+kable_styling(full_width = F, latex_options = c("HOLD_position"))
+
+```
+
+```{r,echo=FALSE}
+df_score <- df[, .(Treatment_Mean_Score = mean(value)), key = .(Treatment)]
+```
+
+
+### Clustered Model Building 
+
+As we can see in the following stargazer table, similar results exist for the clustered models 1-5 when compared against the initial models with identical construction from the first stargazer table. However, model 6 reveals an important result, where the food for each measured response has a significant intercept value. This is consistent with our intuition that different foods will have different consumption propensities on average, and indicates that while we attempted to use similar foods in their deceptively high caloric content, significant variability still exists from food to food. Fortunately, this lends credence to our initial approach of using an aggregate measure to measure the difference from treatment and control, as we attempted to detect a significant difference in mean scores for the treatment and control groups. While the clustering approach of dividing each observation into each of its responses aided in improving power somewhat, we were unable to make a different conclusion than our prior approach outside of identifying the differences between measured foods.
+
+
+```{r,echo=FALSE}
+m1 <- df[, lm(value ~ Treatment)]
+m2 <- df[, lm(value ~ Treatment + look_calories)] 
+m3 <- df[, lm(value ~ Treatment + look_calories + age + gender + active + eat_out)]
+
+#interactive models
+
+m4 <- df[, lm(value ~ Treatment + look_calories + Treatment * look_calories)] 
+m5 <- df[, lm(value ~ Treatment + look_calories + age + gender + active + eat_out + Treatment * look_calories)]
+
+m6 <- df[, lm(value ~ Treatment + look_calories + Treatment*variable)] 
+
+
+m1$vcovCL1_ <- vcovCL(m1, cluster = df[ , variable])
+m2$vcovCL2_ <- vcovCL(m2, cluster = df[ , variable])
+m3$vcovCL3_ <- vcovCL(m3, cluster = df[ , variable])
+m4$vcovCL4_ <- vcovCL(m4, cluster = df[ , variable])
+m5$vcovCL5_ <- vcovCL(m5, cluster = df[ , variable])
+m6$vcovCL6_ <- vcovCL(m6, cluster = df[ , variable])
+```
+
+```{r,echo=FALSE,fig.pos="H"}
+stargazer(m1, m2, m3, m4, m5,m6,
+          type = 'text', 
+          se = list(sqrt(diag(m1$vcovCL1_)), 
+                    sqrt(diag(m2$vcovCL2_)),
+                    sqrt(diag(m3$vcovCL3_)),
+                    sqrt(diag(m4$vcovCL4_)),
+                    sqrt(diag(m5$vcovCL5_)),
+                    sqrt(diag(m6$vcovCL6_))
+                    ),
+          font.size = "small",
+          no.space = FALSE,
+          align = TRUE,
+          omit.stat = c("f", "ser"),
+          column.sep.width = "-40pt",
+          header = F)
+
+```
+
+### Limitations
+There are several limitations to this study that we wanted to address in some manner. One major limitation was the relatively low sample size, which would likely require greater financial and time investment in a future iteration. While in our power analysis, we discovered that in order to capture a small effect size with good power, our study would require approximately 400 subjects for both the sample and treatment groups. Unfortunately, our data collection fell short of this number, as we were only able to procure 275 survey respondents in total. Furthermore, with the removal of vegan and vegetarian respondents, we were left with 214 data points. We believe that improvements can certainly be made in this area of the study if it were to be conducted again, as we were unable to anticipate that vegans and vegetarians would make up such a large portion of our sample after conducting our pilot study. As our pilot study was not fully representative of the survey respondent collection from the panel provider used, the proportion of vegans and vegetarians was largely understated in the pilot study.
+Another point of limitation was the singular method of presenting caloric information used in the survey. While we defaulted to a basic font similar to that used for the questions on the right hand side of each food image in displaying the caloric information for the treatment group, we are limited in how much we can generalize to other forms of presenting this kind of information. In a future study, we might utilize a multifactor design to help us test effects of various displays. These displays could be varied on font size, usage of bold or italics, color, or even orientation on the page.
+
+# Conclusion
+In summary, it is evident from the study that we were unable to find a statistically significant effect of presenting caloric information on the likelihood of consumption of a food by an individual. As suggested by other literature on similar topics, the context and measured effect in our study likely indicate that this result is legitimate. However, it is important to recognize that there were significant limitations regarding the data available to us, and further research is likely necessary to give us greater confidence in generalizing to other similar designs.
+
+
+# References
+
+1. Kiszko, K. M., Martinez, O. D., Abrams, C., & Elbel, B. (2014, December). The influence of calorie labeling on food orders and consumption: A review of the literature. Journal of community health. Retrieved April 16, 2022, from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4209007/#R43 
+
+2. Wei, W., &amp; Miao, L. (2012, August 9). Effects of calorie information disclosure on consumers' food choices at restaurants. International Journal of Hospitality Management. Retrieved April 16, 2022, from https://www.sciencedirect.com/science/article/pii/S0278431912000941?casa_token=TtVQJmICkVQAAAAA%3AcunFw6zQ86uHvCUZNV7oGgL5I-5-Wm-CvuJE9JQXqdxN1Xv07C-3uDBmqtBERu-LoICSwpGsn28 
+
+3. Morley, B., Scully, M., Martin, J., Niven, P., Dixon, H., &amp; Wakefield, M. (2013, March 22). What types of Nutrition Menu labelling lead consumers to select less energy-dense fast food? an experimental study. Appetite. Retrieved April 16, 2022, from https://www.sciencedirect.com/science/article/pii/S0195666313000937?casa_token=H6BeDoOkW7QAAAAA%3A6spAWPR3PD8JtmKnxm7CvEwi_ni4eo4ZbWoL59-B0LZY27QlraxtymATLCfYClgRD21WSPsx_kc 
+
+4. Wisdom, J., Downs, J. S., &amp; Loewenstein, G. (n.d.). Promoting healthy choices: Information versus convenience. American Economic Journal: Applied Economics. Retrieved April 16, 2022, from https://www.aeaweb.org/articles?id=10.1257%2Fapp.2.2.164 
+
+5. Liu, P. J., Roberto, C. A., Liu, L. J., &amp; Brownell, K. D. (2012, August 20). A test of different menu labeling presentations. Appetite. Retrieved April 16, 2022, from https://www.sciencedirect.com/science/article/pii/S0195666312002711?casa_token=ibWUvax_RxAAAAAA%3Aaqw1k2ppCxBdVdAajzhFNgwa4EW0KeNMY5lvyvF0_qGXef4yyDqO9hEBCYAnOtsBN7X2TQSq7_Q 
+
+
+
+
+
+
+
+
+
+
